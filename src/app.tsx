@@ -1,0 +1,177 @@
+import { createRoot } from 'react-dom/client';
+import React, { useEffect } from 'react';
+import useSetting from '@/fronted/hooks/useSetting';
+import { HashRouter, Route, Routes } from 'react-router-dom';
+import HomePage from '@/fronted/pages/HomePage';
+import TitleBarLayout from '@/fronted/pages/TieleBarLayout';
+import PlayerWithControlsPage from '@/fronted/pages/player/PlayerWithControlsPage';
+import Layout from '@/fronted/pages/Layout';
+import About from '@/fronted/pages/About';
+import SettingLayout from '@/fronted/pages/setting/SettingLayout';
+import ShortcutSetting from '@/fronted/pages/setting/ShortcutSetting';
+import StorageSetting from '@/fronted/pages/setting/StorageSetting';
+import CheckUpdate from '@/fronted/pages/setting/CheckUpdate';
+import AppearanceSetting from '@/fronted/pages/setting/AppearanceSetting';
+import ServiceCredentialSetting from '@/fronted/pages/setting/ServiceCredentialSetting';
+import EngineSelectionSetting from '@/fronted/pages/setting/EngineSelectionSetting';
+import { Toaster } from '@/fronted/components/ui/sonner';
+import toast, { Toaster as HotToaster } from 'react-hot-toast';
+import RendererToastHost from '@/fronted/components/shared/toasts/RendererToastHost';
+
+import { syncStatus } from '@/fronted/hooks/useSystem';
+import Transcript from '@/fronted/pages/transcript/Transcript';
+import Split from '@/fronted/pages/split/Split';
+import GlobalShortCut from '@/fronted/components/shared/shortcuts/GlobalShortCut';
+import Convert from '@/fronted/pages/convert/Convert';
+import Eb from '@/fronted/components/shared/common/Eb';
+import Favorite from '@/fronted/pages/favourite';
+import VideoLearningPage from '@/fronted/pages/video-learning';
+import DownloadPage from '@/fronted/pages/download/Download';
+import { startListeningToDpTasks } from '@/fronted/hooks/useDpTaskCenter';
+import { toast as sonnerToast } from 'sonner';
+import { backendClient } from '@/fronted/application/bootstrap/backendClient';
+import { useTranslation as useI18nTranslation } from 'react-i18next';
+import { applyLanguageSetting } from '@/fronted/i18n';
+
+const api = window.electron;
+const UPDATE_CHECK_DELAY_MS = 6000;
+const UPDATE_TOAST_ID = 'update-available';
+const App = () => {
+    const { t } = useI18nTranslation('toast');
+    const theme = useSetting((s) => s.values.get('appearance.theme'));
+    const languageSetting = useSetting((s) => s.values.get('i18n.language'));
+    useEffect(() => {
+        document.documentElement.classList.add(theme ?? 'dark');
+        return () => {
+            document.documentElement.classList.remove(theme ?? 'dark');
+        };
+    }, [theme]);
+
+    useEffect(() => {
+        applyLanguageSetting(languageSetting).catch(() => undefined);
+    }, [languageSetting]);
+
+    useEffect(() => {
+        const timer = window.setTimeout(() => {
+            (async () => {
+                const result = await backendClient.call('system/check-update', { mode: 'toast' });
+                if (result.status !== 'ok' || result.releases.length === 0 || !result.shouldNotify) {
+                    return;
+                }
+                const latest = result.releases[0];
+                sonnerToast(t('updateAvailableTitle', { version: latest.version }), {
+                    id: UPDATE_TOAST_ID,
+                    duration: 8000,
+                    position: 'bottom-left',
+                    action: {
+                        label: t('updateAvailableAction'),
+                        onClick: async () => {
+                            await backendClient.call('system/open-url', latest.url);
+                        },
+                    },
+                });
+            })().catch(() => {
+                // ignore update check failures on startup
+            });
+        }, UPDATE_CHECK_DELAY_MS);
+
+        return () => window.clearTimeout(timer);
+    }, [t]);
+    return (
+        <>
+            <div className="w-full h-screen text-black overflow-hidden select-none font-sans">
+                <HashRouter>
+                    <Routes>
+                        <Route path="/" element={<HomePage />} />
+                        <Route path="home" element={<HomePage />} />
+                        <Route element={<TitleBarLayout />}>
+                            <Route
+                                path="player/:videoId"
+                                element={<PlayerWithControlsPage />}
+                            />
+                            <Route path="*" element={<Layout />}>
+                                <Route
+                                    path="transcript"
+                                    element={<Eb key="transcript"><Transcript /></Eb>}
+                                />
+                                <Route
+                                    path="favorite"
+                                    element={<Eb key="favorite"><Favorite /></Eb>}
+                                />
+                                <Route
+                                    path="split"
+                                    element={<Eb key="split"><Split /></Eb>}
+                                />
+                                <Route
+                                    path="convert"
+                                    element={<Eb key="convert"><Convert /></Eb>}
+                                />
+                                <Route
+                                    path="vocabulary"
+                                    element={<Eb key="vocabulary"><VideoLearningPage /></Eb>}
+                                />
+                                <Route
+                                    path="download"
+                                    element={<Eb key="download"><DownloadPage /></Eb>}
+                                />
+                                <Route path="about" element={<Eb key="about"><About /></Eb>} />
+                                <Route
+                                    path="settings"
+                                    element={<SettingLayout />}
+                                >
+                                    <Route
+                                        path="*"
+                                        element={<Eb><ShortcutSetting /></Eb>}
+                                    />
+                                    <Route
+                                        path="shortcut"
+                                        element={<Eb><ShortcutSetting /></Eb>}
+                                    />
+                                    <Route
+                                        path="service-credentials"
+                                        element={<Eb><ServiceCredentialSetting /></Eb>}
+                                    />
+                                    <Route
+                                        path="engine-selection"
+                                        element={<Eb><EngineSelectionSetting /></Eb>}
+                                    />
+                                    <Route
+                                        path="storage"
+                                        element={<Eb><StorageSetting /></Eb>}
+                                    />
+                                    <Route
+                                        path="update"
+                                        element={<Eb><CheckUpdate /></Eb>}
+                                    />
+                                    <Route
+                                        path="appearance"
+                                        element={<Eb><AppearanceSetting /></Eb>}
+                                    />
+                                </Route>
+                            </Route>
+                        </Route>
+                    </Routes>
+                </HashRouter>
+            </div>
+            <Toaster position="bottom-left" />
+            <HotToaster />
+            <RendererToastHost />
+            <GlobalShortCut />
+        </>
+    );
+};
+
+const rootElement = document.getElementById('root');
+if (!rootElement) {
+    throw new Error('Root element not found');
+}
+const root = createRoot(rootElement);
+root.render(<App />);
+syncStatus();
+api.onErrorMsg((error: Error) => {
+    toast.error(error.message);
+});
+api.onInfoMsg((info: string) => {
+    toast.success(info);
+});
+startListeningToDpTasks();

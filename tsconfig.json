@@ -1,0 +1,34 @@
+{
+    "compilerOptions": {
+        "strict": true,
+        "experimentalDecorators": true,
+        "emitDecoratorMetadata": true,
+        "types": ["node", "reflect-metadata"],
+        "target": "ESNext",
+        "module": "ESNext",
+        "allowJs": true,
+        "skipLibCheck": true,
+        "esModuleInterop": true,
+        "noImplicitAny": true,
+        "sourceMap": true,
+        "baseUrl": ".",
+        "outDir": "dist",
+        "moduleResolution": "bundler",
+        "resolveJsonModule": true,
+        "jsx": "react-jsx",
+        "paths": {
+            "@/*": [
+                "./src/*"
+            ]
+        }
+    },
+    "include": [
+        "src",
+        "vite.*.config.ts",
+        "vitest.config.ts",
+        "forge.config.ts",
+        "drizzle.config.ts",
+        "forge.env.d.ts"
+    ],
+    "exclude": ["my-new-app", "dist", "out", ".vite", "node_modules"]
+}
