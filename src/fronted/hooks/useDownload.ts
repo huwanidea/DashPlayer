@@ -3,6 +3,7 @@ import { persist, subscribeWithSelector } from 'zustand/middleware';
 import { backendClient } from '@/fronted/application/bootstrap/backendClient';
 import useDpTaskCenter from '@/fronted/hooks/useDpTaskCenter';
 import { DownloadMetadata } from '@/backend/application/ports/gateways/media/DownloadGateway';
+import { DpTaskState } from '@/backend/infrastructure/db/tables/dpTask';
 
 const api = backendClient;
 
@@ -79,7 +80,7 @@ const useDownload = create(
                                     url,
                                     title: metadata?.title || existing?.title || 'Unknown',
                                     thumbnail: metadata?.thumbnail || existing?.thumbnail,
-                                    status: task.status === 'DONE' ? 'done' : 'failed',
+                                    status: task.status === DpTaskState.DONE ? 'done' : 'failed',
                                     percent: 100,
                                     savePath: existing?.savePath
                                 });
@@ -112,22 +113,32 @@ const useDownload = create(
             name: 'video-download-storage',
             storage: {
                 getItem: (name) => {
-                    const str = localStorage.getItem(name);
-                    if (!str) return null;
-                    const data = JSON.parse(str);
-                    if (data.state && data.state.tasks) {
-                        data.state.tasks = new Map(
-                            Object.entries(data.state.tasks).map(([k, v]) => [Number(k), v])
-                        );
+                    try {
+                        const str = localStorage.getItem(name);
+                        if (!str) return null;
+                        const data = JSON.parse(str);
+                        if (data?.state?.tasks && typeof data.state.tasks === 'object') {
+                            data.state.tasks = new Map(
+                                Object.entries(data.state.tasks).map(([k, v]) => [Number(k), v])
+                            );
+                        }
+                        return data as any;
+                    } catch (e) {
+                        console.warn('Failed to load download state from localStorage, resetting:', e);
+                        localStorage.removeItem(name);
+                        return null;
                     }
-                    return data as any;
                 },
                 setItem: (name, value) => {
-                    const data = { ...value } as any;
-                    if (data.state && data.state.tasks) {
-                        data.state.tasks = Object.fromEntries(data.state.tasks);
+                    try {
+                        const data = { ...value } as any;
+                        if (data.state && data.state.tasks instanceof Map) {
+                            data.state.tasks = Object.fromEntries(data.state.tasks);
+                        }
+                        localStorage.setItem(name, JSON.stringify(data));
+                    } catch (e) {
+                        console.warn('Failed to save download state to localStorage:', e);
                     }
-                    localStorage.setItem(name, JSON.stringify(data));
                 },
                 removeItem: (name) => localStorage.removeItem(name),
             }

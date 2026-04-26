@@ -28,6 +28,7 @@ import useConvert from '@/fronted/hooks/useConvert';
 import { toast as sonnerToast } from 'sonner';
 import { backendClient } from '@/fronted/application/bootstrap/backendClient';
 import { useTranslation as useI18nTranslation } from 'react-i18next';
+import UrlUtil from '@/common/utils/UrlUtil';
 
 const api = backendClient;
 const logger = getRendererLogger('PlayerWithControlsPage');
@@ -37,8 +38,22 @@ const PlayerWithControlsPage = () => {
     const { t } = useI18nTranslation('player');
     const {videoId} = useParams();
     const navigate = useNavigate();
-    const {data: video} = useSWR([SWR_KEY.PLAYER_P, videoId], ([_key, videoId]) => api.call('watch-history/detail', videoId));
-    logger.debug('pa-player page loaded', {videoId, hasVideo: !!video});
+    const location = useLocation();
+    const searchParams = new URLSearchParams(location.search);
+    const filePathParam = searchParams.get('filePath');
+    
+    // Debug: log URL params
+    console.log('PlayerWithControlsPage: videoId=', videoId, 'filePathParam=', filePathParam, 'search=', location.search);
+    
+    const fetcher = async ([_key, videoId]: [string, string]) => {
+        console.log('fetcher called with videoId:', videoId);
+        if (!videoId) return null;
+        return await api.call('watch-history/detail', videoId);
+    };
+    const {data: video} = useSWR([SWR_KEY.PLAYER_P, videoId], fetcher);
+    logger.debug('pa-player page loaded', {videoId, hasVideo: !!video, filePathParam});
+    logger.debug('pa-player page loaded', {videoId, hasVideo: !!video, filePathParam});
+    
     const { data: windowState } = useSWR(SWR_KEY.WINDOW_SIZE, () => api.call('system/window-size'));
     const isMac = useSystem((s) => s.isMac);
     const showSideBar = useLayout((state) => state.showSideBar);
@@ -53,9 +68,8 @@ const PlayerWithControlsPage = () => {
         null,
         useLayout((s) => s.height)
     );
-    const location = useLocation();
     const sideBarAnimation =
-        (new URLSearchParams(location.search).get('sideBarAnimation') ??
+        (searchParams.get('sideBarAnimation') ??
             'true') === 'true';
     const [_searchParams, setSearchParams] = useSearchParams();
     const referrer = location.state && location.state.referrer;
@@ -123,6 +137,21 @@ const PlayerWithControlsPage = () => {
             setVisible(true);
         };
     }, [chatTopic, isMac, showSideBar, uiFullScreen, video, windowState]);
+    
+    // Handle filePath parameter from URL (for downloaded videos)
+    useEffect(() => {
+        if (!filePathParam) return;
+
+        logger.debug('filePath param detected, loading video directly', { filePath: filePathParam });
+        const fileUrl = UrlUtil.toUrl(filePathParam);
+        console.log('Setting video source to:', fileUrl);
+        playerActions.setSource(fileUrl);
+        // Auto-play after a brief delay to allow the player to initialize
+        setTimeout(() => {
+            playerActions.play();
+        }, 300);
+    }, [filePathParam]);
+    
     useEffect(() => {
         const runEffect = async () => {
             logger.debug('video effect triggered', {video});

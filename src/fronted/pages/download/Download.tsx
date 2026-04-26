@@ -7,7 +7,6 @@ import { Button } from '@/fronted/components/ui/button';
 import { Card } from '@/fronted/components/ui/card';
 import { Progress } from '@/fronted/components/ui/progress';
 import { Download, Link as LinkIcon, AlertCircle, CheckCircle2, Loader2, Play } from 'lucide-react';
-import { useShallow } from 'zustand/react/shallow';
 import { DownloadMetadata } from '@/backend/application/ports/gateways/media/DownloadGateway';
 import { toast } from 'sonner';
 import { cn } from '@/fronted/lib/utils';
@@ -69,12 +68,11 @@ const DownloadPage = () => {
     const [isParsing, setIsParsing] = useState(false);
     const [metadata, setMetadata] = useState<DownloadMetadata | null>(null);
 
-    const { tasks, startDownload, getMetadata, clearTasks } = useDownload(useShallow(state => ({
-        tasks: Array.from(state.tasks.values()).reverse(),
-        startDownload: state.startDownload,
-        getMetadata: state.getMetadata,
-        clearTasks: state.clearTasks,
-    })));
+    const startDownload = useDownload((state) => state.startDownload);
+    const getMetadata = useDownload((state) => state.getMetadata);
+    const clearTasks = useDownload((state) => state.clearTasks);
+    const tasksMap = useDownload((state) => state.tasks);
+    const tasks = React.useMemo(() => Array.from(tasksMap.values()).reverse(), [tasksMap]);
 
     const handleParse = async () => {
         if (!url) return;

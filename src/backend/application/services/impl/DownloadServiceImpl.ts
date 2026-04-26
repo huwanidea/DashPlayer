@@ -56,6 +56,10 @@ export default class DownloadServiceImpl implements DownloadService {
                 progress: '下载完成',
                 result: JSON.stringify({ percent: 100, path: finalSavePath })
             });
+            // Extra buffer: ensure file is completely written before ffprobe tries to read it
+            setTimeout(() => {
+                this.logger.info(`Download complete, file ready: ${finalSavePath}`);
+            }, 1000);
         }).catch((err) => {
             this.logger.error('download failed', { error: err.message });
             this.dpTaskService.fail(taskId, {

@@ -89,6 +89,10 @@ const App = () => {
                                 path="player/:videoId"
                                 element={<PlayerWithControlsPage />}
                             />
+                            <Route
+                                path="player"
+                                element={<PlayerWithControlsPage />}
+                            />
                             <Route path="*" element={<Layout />}>
                                 <Route
                                     path="transcript"
