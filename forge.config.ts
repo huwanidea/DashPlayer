@@ -80,17 +80,18 @@ const config: ForgeConfig = {
                 icon: './assets/icons/icon.png',
             },
         }),
-        new MakerWix({
-            name: 'DashPlayer',
-            description: 'A video player for English learning',
-            manufacturer: 'solidSpoon',
-            version: packageJson.version,
-            icon: './assets/icons/icon.ico',
-            exe: 'dash-player.exe',
-            ui: {
-                chooseDirectory: true,
-            },
-        }),
+        // WiX disabled - requires local installation (use GitHub Actions CI for MSI builds)
+        // new MakerWix({
+        //     name: 'DashPlayer',
+        //     description: 'A video player for English learning',
+        //     manufacturer: 'solidSpoon',
+        //     version: packageJson.version,
+        //     icon: './assets/icons/icon.ico',
+        //     exe: 'dash-player.exe',
+        //     ui: {
+        //         chooseDirectory: true,
+        //     },
+        // }),
     ],
     plugins: [
         new VitePlugin({
@@ -114,7 +115,7 @@ const config: ForgeConfig = {
         {
             name: '@electron-forge/publisher-github',
             config: {
-                repository: { owner: 'solidSpoon', name: 'DashPlayer' },
+                repository: { owner: 'huwanidea', name: 'DashPlayer' },
                 prerelease: true,
             },
         },
