@@ -36,6 +36,8 @@ export interface SplitVideoByTimesArgs {
     times: number[];
     /** 输出路径模板，如 /tmp/chunk_%03d.mp4。 */
     outputPattern: string;
+    /** 精确模式：使用 re-encode 而非 -c copy，避免关键帧对齐偏差。 */
+    precise?: boolean;
 }
 
 /**

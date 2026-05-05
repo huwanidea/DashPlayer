@@ -711,6 +711,7 @@ export default class SrtUtil {
      * - 按分片偏移量升序处理，保证跨分片时间线正确。
      * - 将每个 segment 的起止时间叠加所属分片偏移量。
      * - 输出时统一重排索引，避免上游编号缺失或重复。
+     * - 对无效 segment（缺少必需字段）进行过滤并记录警告。
      *
      * @param chunks Whisper 分片结果列表。
      * @returns 标准 SRT 文本内容。
@@ -732,6 +733,20 @@ export default class SrtUtil {
         for (const chunk of sortedChunks) {
             const segments = chunk.response?.segments ?? [];
             for (const segment of segments) {
+                // 校验 segment 必需字段，无效则跳过
+                if (
+                    typeof segment?.start !== 'number' ||
+                    typeof segment?.end !== 'number' ||
+                    typeof segment?.text !== 'string'
+                ) {
+                    console.warn('[whisperChunksToSrt] 跳过无效 segment，缺少必需字段:', segment);
+                    continue;
+                }
+                // 校验时间有效性
+                if (!isFinite(segment.start) || !isFinite(segment.end) || segment.end <= segment.start) {
+                    console.warn('[whisperChunksToSrt] 跳过无效 segment，时间值无效:', segment);
+                    continue;
+                }
                 lines.push({
                     index: counter,
                     start: segment.start + chunk.offset,

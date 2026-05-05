@@ -6,7 +6,7 @@ import { Input } from '@/fronted/components/ui/input';
 import { Button } from '@/fronted/components/ui/button';
 import { Card } from '@/fronted/components/ui/card';
 import { Progress } from '@/fronted/components/ui/progress';
-import { Download, Link as LinkIcon, AlertCircle, CheckCircle2, Loader2, Play } from 'lucide-react';
+import { Download, Link as LinkIcon, AlertCircle, CheckCircle2, Loader2, Play, X } from 'lucide-react';
 import { DownloadMetadata } from '@/backend/application/ports/gateways/media/DownloadGateway';
 import { toast } from 'sonner';
 import { cn } from '@/fronted/lib/utils';
@@ -15,6 +15,17 @@ import { useNavigate } from 'react-router-dom';
 const DownloadItem = ({ task }: { task: any }) => {
     const { t } = useTranslation('pages');
     const navigate = useNavigate();
+
+    const handleCancel = async () => {
+        try {
+            await api.call('dp-task/cancel', task.id);
+            toast.success('Download cancelled');
+        } catch (e: any) {
+            toast.error(`Cancel failed: ${e.message}`);
+        }
+    };
+
+    const isDownloading = task.status === 'downloading' || task.status === 'pending';
 
     return (
         <Card className="p-4 flex flex-col gap-3 bg-muted/30">
@@ -37,16 +48,29 @@ const DownloadItem = ({ task }: { task: any }) => {
                         {task.eta && <span className="text-[10px] text-muted-foreground">ETA: {task.eta}</span>}
                     </div>
                 </div>
-                {task.status === 'done' && (
-                    <Button 
-                        size="icon" 
-                        variant="secondary"
-                        className="rounded-full shrink-0" 
-                        onClick={() => navigate(`/player?filePath=${encodeURIComponent(task.savePath)}`)}
-                    >
-                        <Play size={16} fill="currentColor" />
-                    </Button>
-                )}
+                <div className="flex items-center gap-2 shrink-0">
+                    {isDownloading && (
+                        <Button
+                            size="icon"
+                            variant="outline"
+                            className="rounded-full text-muted-foreground hover:text-destructive hover:border-destructive"
+                            onClick={handleCancel}
+                            title="Cancel download"
+                        >
+                            <X size={16} />
+                        </Button>
+                    )}
+                    {task.status === 'done' && (
+                        <Button
+                            size="icon"
+                            variant="secondary"
+                            className="rounded-full"
+                            onClick={() => navigate(`/player?filePath=${encodeURIComponent(task.savePath)}`)}
+                        >
+                            <Play size={16} fill="currentColor" />
+                        </Button>
+                    )}
+                </div>
             </div>
             
             {task.status === 'downloading' && (

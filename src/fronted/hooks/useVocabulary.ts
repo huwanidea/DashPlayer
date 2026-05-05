@@ -13,6 +13,8 @@ interface VocabularyState {
     setVocabularyWords: (words: string[]) => void;
     setVocabularyForms: (forms: VocabularyFormsMap) => void;
     addVocabularyWords: (words: string[]) => void;
+    /** 从生词本中移除指定单词 */
+    removeVocabularyWords: (words: string[]) => void;
     clearVocabularyWords: () => void;
     isVocabularyWord: (word: string) => boolean;
     getBaseWord: (word: string) => string | undefined;
@@ -77,6 +79,20 @@ const useVocabularyStore = create<VocabularyState>((set, get) => ({
                 version: state.version + 1
             };
         });
+    },
+
+    removeVocabularyWords: (words: string[]) => {
+        const normalized = new Set(
+            words.map(normalizeWord).filter((word): word is string => !!word)
+        );
+        if (normalized.size === 0) {
+            return;
+        }
+
+        set((state) => ({
+            vocabularyWords: state.vocabularyWords.filter((w) => !normalized.has(w)),
+            version: state.version + 1
+        }));
     },
 
     clearVocabularyWords: () => {

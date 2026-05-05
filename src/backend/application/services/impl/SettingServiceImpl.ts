@@ -90,6 +90,10 @@ export default class SettingServiceImpl implements SettingService {
         if (value === 'openai' || value === 'whisper' || value === 'none') {
             return value;
         }
+        // 兼容旧 schema key（transcription.engine）中的 openai 值
+        if (value === 'openai (transcribe)') {
+            return 'openai';
+        }
         return 'none';
     }
 

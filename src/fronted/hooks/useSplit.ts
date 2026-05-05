@@ -5,10 +5,11 @@ import { create } from 'zustand';
 import { persist, subscribeWithSelector } from 'zustand/middleware';
 import { ChapterParseResult } from '@/common/types/chapter-result';
 import MediaUtil from '@/common/utils/MediaUtil';
-import useDpTaskCenter from '@/fronted/hooks/useDpTaskCenter';
+import useDpTaskCenter, { registerDpTask } from '@/fronted/hooks/useDpTaskCenter';
 import { SWR_KEY, swrApiMutate, swrMutate } from '@/fronted/lib/swr-util';
 import StrUtil from '@/common/utils/str-util';
 import { backendClient } from '@/fronted/application/bootstrap/backendClient';
+import { DpTaskState } from '@/backend/infrastructure/db/tables/dpTask';
 
 const api = backendClient;
 
@@ -22,6 +23,11 @@ export type UseSplitState = {
     userInput: string;
     parseResult: TaskChapterParseResult[];
     inputable: boolean;
+    splitTaskId: number | null;
+    splitProgress: number;
+    splitStatus: 'idle' | 'splitting' | 'done' | 'error';
+    /** 精确模式：使用 re-encode 而非 -c copy，避免关键帧对齐偏差 */
+    preciseMode: boolean;
 };
 
 export type UseSplitAction = {
@@ -30,6 +36,8 @@ export type UseSplitAction = {
     deleteFile(filePath: string): void;
     runSplitAll(): Promise<void>;
     aiFormat: () => void;
+    cancelSplit(): void;
+    setPreciseMode(enabled: boolean): void;
 };
 
 
@@ -41,6 +49,10 @@ const useSplit = create(
             userInput: '',
             parseResult: [],
             inputable: true,
+            splitTaskId: null,
+            splitProgress: 0,
+            splitStatus: 'idle',
+            preciseMode: false,
             updateFile: async (filePath) => {
                 if (StrUtil.isBlank(filePath)) {
                     return;
@@ -73,14 +85,62 @@ const useSplit = create(
                         throw new Error('请修正红色部分');
                     }
                 }
-                const folderName = await api.call('split-video/split', {
-                    videoPath: useSplit.getState().videoPath ?? '',
-                    srtPath: useSplit.getState().srtPath,
-                    chapters: useSplit.getState().parseResult
+
+                // 使用任务中心进行分割，显示进度
+                set({ splitStatus: 'splitting', splitProgress: 0 });
+
+                const { preciseMode } = get();
+                const taskId = await registerDpTask(async () => {
+                    set({ splitProgress: 10 });
+                    const result = await api.call('split-video/split', {
+                        videoPath: useSplit.getState().videoPath ?? '',
+                        srtPath: useSplit.getState().srtPath,
+                        chapters: useSplit.getState().parseResult,
+                        precise: preciseMode
+                    });
+                    set({ splitProgress: 90 });
+                    await api.call('watch-history/create', [result]);
+                    await swrApiMutate('watch-history/list');
+                    set({ splitProgress: 100, splitStatus: 'done' });
+                    return result;
+                }, {
+                    onUpdated: (task) => {
+                        if (task.status === DpTaskState.IN_PROGRESS) {
+                            // 尝试从 result 中解析进度
+                            try {
+                                const r = JSON.parse(task.result || '{}');
+                                if (r.progress !== undefined) {
+                                    set({ splitProgress: Math.floor(r.progress) });
+                                }
+                            } catch {
+                                // ignore
+                            }
+                        }
+                    },
+                    onFinish: (task) => {
+                        if (task.status === DpTaskState.DONE) {
+                            set({ splitStatus: 'done', splitProgress: 100 });
+                        } else {
+                            set({ splitStatus: 'error' });
+                        }
+                    }
                 });
-                await api.call('watch-history/create', [folderName]);
-                await swrApiMutate('watch-history/list');
+
+                set({ splitTaskId: taskId });
+                return;
             },
+            cancelSplit: async () => {
+                const taskId = get().splitTaskId;
+                if (taskId) {
+                    try {
+                        await api.call('dp-task/cancel', taskId);
+                    } catch {
+                        // ignore
+                    }
+                }
+                set({ splitStatus: 'idle', splitTaskId: null, splitProgress: 0 });
+            },
+            setPreciseMode: (enabled) => set({ preciseMode: enabled }),
             aiFormat: async () => {
                 if (StrUtil.isBlank(get().userInput)) {
                     return;
@@ -118,7 +178,17 @@ useSplit.subscribe(
             useSplit.setState({ parseResult: [] });
             return;
         }
-        const result = await api.call('split-video/preview', topic);
+        const videoPath = useSplit.getState().videoPath;
+        let videoDuration: number | undefined;
+        if (videoPath) {
+            try {
+                const info = await api.call('split-video/video-length', videoPath);
+                videoDuration = info.duration;
+            } catch {
+                // Ignore error, preview will use placeholder
+            }
+        }
+        const result = await api.call('split-video/preview', { topic, videoDuration });
         const oldState: Map<string, TaskChapterParseResult> = new Map(useSplit.getState().parseResult.map(r => [r.original, r]));
         useSplit.setState({
             parseResult: result.map(r => ({

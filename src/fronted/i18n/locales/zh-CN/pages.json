@@ -58,6 +58,9 @@
         "splitting": "切分中...",
         "splitSuccess": "切分完成",
         "splitFailed": "切分失败",
+        "cancel": "取消",
+        "preciseMode": "精确模式",
+        "preciseModeTooltip": "使用 re-encode 而非快速复制，避免关键帧对齐偏差。速度较慢但切分更精确，字幕时间轴更准确。",
         "tabs": {
             "preview": "预览",
             "quickSelect": "快捷选择"
@@ -68,6 +71,10 @@
             "title": "标题",
             "empty": "暂无切分配置，在左侧输入时间戳开始",
             "shortDuration": "时间间隔小于 1 分钟"
+        },
+        "warning": {
+            "title": "关键帧对齐说明",
+            "description": "视频切分使用快速复制模式（-c copy），切割点会跳到最近的关键帧位置，实际时长可能与设定时间有 1-5 秒偏差。如需精确切分，建议在播放器中手动标记起止时间后导出。"
         }
     },
     "subtitleWorkspace": {

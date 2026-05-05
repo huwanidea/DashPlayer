@@ -32,7 +32,16 @@ export const storeSchemaProviderMigrationV2 = {
         }
 
         const transcription = getPersistedString('providers.transcription');
-        if (transcription && !['openai', 'whisper', 'none'].includes(transcription)) {
+        const legacyTranscription = getPersistedString('transcription.engine');
+
+        // Fix V1 migration bug: when providers.transcription is null/empty but
+        // legacy transcription.engine was 'openai', restore the correct value.
+        if (
+            (!transcription || !['openai', 'whisper', 'none'].includes(transcription)) &&
+            legacyTranscription === 'openai'
+        ) {
+            storeSet('providers.transcription', 'openai');
+        } else if (transcription && !['openai', 'whisper', 'none'].includes(transcription)) {
             storeSet('providers.transcription', 'none');
         }
     },

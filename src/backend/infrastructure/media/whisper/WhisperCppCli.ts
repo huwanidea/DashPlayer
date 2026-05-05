@@ -17,12 +17,25 @@ export class WhisperCppCli {
     private helpCache: string | null = null;
     private activeProcess: ChildProcess | null = null;
 
+    /** 清除帮助文本缓存，确保下次转录重新探测 CLI 能力。 */
+    public clearHelpCache(): void {
+        this.helpCache = null;
+    }
+
     public killActive(signal: NodeJS.Signals | number = 'SIGKILL'): void {
         try {
             this.activeProcess?.kill(signal);
         } catch {
             //
         }
+    }
+
+    public test(): { exists: boolean; executablePath: string; version?: string; error?: string } {
+        const executablePath = this.resolveExecutablePath();
+        if (!fs.existsSync(executablePath)) {
+            return { exists: false, executablePath, error: 'Executable not found' };
+        }
+        return { exists: true, executablePath };
     }
 
     public resolveExecutablePath(): string {
@@ -78,9 +91,16 @@ export class WhisperCppCli {
 
         if (isCancelled?.()) throw new Error('Transcription cancelled by user');
 
+        // 调试日志
+        this.logger.info('[whisper] run: executable', { executablePath, exists: fs.existsSync(executablePath) });
+        this.logger.info('[whisper] run: args', { args });
+        this.logger.info('[whisper] run: cwd', { cwd: process.cwd() });
+        this.logger.info('[whisper] run: env.PATH (first 200)', { PATH: (process.env.PATH || '').substring(0, 200) });
+
         let lastReportedPercent = 0;
         let lastProgressUpdateAt = 0;
         let hasSeenWhisperPercent = false;
+        let stderrChunkCount = 0;
         const maybeReportPercent = (percent: number, heartbeat: boolean) => {
             const now = Date.now();
             if (!Number.isFinite(percent)) return;
@@ -99,6 +119,7 @@ export class WhisperCppCli {
 
         try {
             await new Promise<void>((resolve, reject) => {
+                this.logger.info('[whisper] about to spawn whisper-cli');
                 const child = spawn(executablePath, args, {stdio: ['pipe', 'pipe', 'pipe']});
                 this.activeProcess = child;
 
@@ -128,9 +149,15 @@ export class WhisperCppCli {
                     scanForPercent(String(d));
                 });
                 child.stderr.on('data', (d) => {
+                    stderrChunkCount++;
                     const chunk = String(d);
                     stderr += chunk;
+                    this.logger.debug(`[whisper] stderr chunk #${stderrChunkCount} (len=${chunk.length}): ${JSON.stringify(chunk.substring(0, 100))}`);
                     scanForPercent(chunk);
+                });
+
+                child.on('error', (err) => {
+                    this.logger.error('[whisper] child process error', { error: err.message, code: (err as any).code, errno: (err as any).errno });
                 });
 
                 const heartbeat = setInterval(() => {
@@ -138,16 +165,20 @@ export class WhisperCppCli {
                     if (hasSeenWhisperPercent) return;
                     const now = Date.now();
                     if (now - lastProgressUpdateAt < 8000) return;
-                    this.logger.debug('whisper.cpp progress heartbeat');
+                    this.logger.debug('[whisper] progress heartbeat', { lastReportedPercent, stderrLen: stderr.length, chunks: stderrChunkCount });
                     maybeReportPercent(lastReportedPercent, true);
                 }, 4000);
 
-                child.on('error', reject);
                 child.on('close', (code) => {
                     clearInterval(heartbeat);
+                    this.logger.info(`[whisper] child close: code=${code}, stderrLen=${stderr.length}, chunks=${stderrChunkCount}`);
+                    this.logger.debug(`[whisper] full stderr (${stderr.length} chars): ${JSON.stringify(stderr.substring(0, 500))}`);
                     if (code === 0) resolve();
                     else {
                         let errorMsg = `whisper.cpp exit code ${code}: ${stderr.slice(-2000)}`;
+                        if (stderr.length > 2000) {
+                            errorMsg += `\n[stderr beginning]: ${stderr.slice(0, 1000)}`;
+                        }
                         if (code !== 0 && !stderr.trim() && process.platform === 'win32') {
                             errorMsg += '\n提示：检测到程序异常退出且无输出，可能是由于缺少必要的 DLL 依赖或 Visual C++ 运行库。请尝试运行 "yarn download" 重新下载二进制文件，或安装最新的 VC++ Redistributable。';
                         }

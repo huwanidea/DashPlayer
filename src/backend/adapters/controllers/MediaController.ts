@@ -18,23 +18,26 @@ export default class MediaController implements Controller {
     @inject(TYPES.MediaService)
     private mediaService!: MediaService;
 
-    public async previewSplit(str: string): Promise<ChapterParseResult[]> {
-        return this.splitVideoService.previewSplit(str);
+    public async previewSplit({ topic, videoDuration }: { topic: string; videoDuration?: number }): Promise<ChapterParseResult[]> {
+        return this.splitVideoService.previewSplit(topic, videoDuration);
     }
 
     public async split({
                            videoPath,
                            srtPath,
-                           chapters
+                           chapters,
+                           precise
                        }: {
         videoPath: string,
         srtPath: string | null,
-        chapters: ChapterParseResult[]
+        chapters: ChapterParseResult[],
+        precise?: boolean
     }): Promise<string> {
         return await this.splitVideoService.splitByChapters({
             videoPath,
             srtPath,
-            chapters
+            chapters,
+            precise
         });
     }
 

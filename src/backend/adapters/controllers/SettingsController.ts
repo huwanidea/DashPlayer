@@ -12,11 +12,19 @@ import {
 import { EngineSelectionSettingVO } from '@/common/types/vo/engine-selection-setting-vo';
 import { ShortcutSettingDetailVO, ShortcutSettingSaveVO } from '@/common/types/vo/shortcut-setting-vo';
 import { getStorageRootStatus } from '@/backend/infrastructure/storage/StorageDirectorySupport';
+import { WhisperCppCli } from '@/backend/infrastructure/media/whisper/WhisperCppCli';
+import StorageDirectoryProvider, {
+    StorageDirectoryTarget,
+} from '@/backend/application/ports/gateways/storage/StorageDirectoryProvider';
+import * as fs from 'fs';
+import * as path from 'path';
 
 @injectable()
 export default class SettingsController implements Controller {
     @inject(TYPES.SettingService) private settingService!: SettingService;
     @inject(TYPES.SettingsKeyValueService) private settingsKeyValueService!: SettingsKeyValueService;
+    @inject(TYPES.WhisperCppCli) private whisperCppCli!: WhisperCppCli;
+    @inject(TYPES.StorageDirectoryProvider) private storageDirectoryProvider!: StorageDirectoryProvider;
     private logger = getMainLogger('SettingsController');
 
     /**
@@ -67,6 +75,33 @@ export default class SettingsController implements Controller {
     public async testYoudao(): Promise<{ success: boolean, message: string }> {
         this.logger.info('testing youdao connection');
         return this.settingService.testYoudao();
+    }
+
+    public async testWhisper(): Promise<{ success: boolean, message: string }> {
+        this.logger.info('testing whisper local connection');
+        const cliResult = this.whisperCppCli.test();
+        if (!cliResult.exists) {
+            return { success: false, message: `Whisper CLI 未找到: ${cliResult.executablePath}` };
+        }
+
+        const modelsRoot = await this.storageDirectoryProvider.provideDirectory(StorageDirectoryTarget.MODELS);
+        const modelSize = this.settingsKeyValueService.get('whisper.modelSize') === 'large' ? 'large' : 'base';
+        const modelTag = modelSize === 'large' ? 'large-v3' : 'base';
+        const modelPath = path.join(modelsRoot, 'whisper', `ggml-${modelTag}.bin`);
+
+        if (!fs.existsSync(modelPath)) {
+            return { success: false, message: `Whisper ${modelSize} 模型文件未找到: ${modelPath}` };
+        }
+
+        const vadModel = this.settingsKeyValueService.get('whisper.vadModel') === 'silero-v5.1.2' ? 'silero-v5.1.2' : 'silero-v6.2.0';
+        // 路径与 WhisperCppArgsBuilder.build() 保持一致：whisper-vad 子目录 + ggml 前缀 + .bin 后缀
+        const vadPath = path.join(modelsRoot, 'whisper-vad', `ggml-${vadModel}.bin`);
+        const vadExists = fs.existsSync(vadPath);
+
+        return {
+            success: true,
+            message: `Whisper CLI 就绪，模型: ${modelSize}，VAD: ${vadExists ? '已下载' : '未下载'}`
+        };
     }
 
     public async updateAppearanceSettings(params: { theme: string; fontSize: string }): Promise<void> {
@@ -154,6 +189,7 @@ export default class SettingsController implements Controller {
         registerRoute('settings/service-credentials/test-openai', () => this.testOpenAi());
         registerRoute('settings/service-credentials/test-tencent', () => this.testTencent());
         registerRoute('settings/service-credentials/test-youdao', () => this.testYoudao());
+        registerRoute('settings/service-credentials/test-whisper', () => this.testWhisper());
         registerRoute('settings/engine-selection/detail', () => this.getEngineSelectionDetail());
         registerRoute('settings/engine-selection/save', (p) => this.saveEngineSelection(p));
         registerRoute('settings/shortcuts/detail', () => this.getShortcutSettingsDetail());

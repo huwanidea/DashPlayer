@@ -25,12 +25,14 @@ interface OpenAIWordPopProps {
     onRefresh?: () => void;
     /** 收藏按钮点击回调，参数为 (单词, 释义) */
     onAddToVocabulary?: (word: string, translate?: string) => void;
+    /** 切换收藏按钮点击回调，参数为 (单词, 释义)；点击时自动判断是收藏还是取消收藏 */
+    onToggleVocabulary?: (word: string, translate?: string) => void;
     /** 当前单词是否已在生词本中 */
     isWordInVocabulary?: boolean;
     className?: string; // 容器 class 覆盖
 }
 
-const OpenAIWordPop: React.FC<OpenAIWordPopProps> = ({ data, isLoading = false, isStreaming = false, onRefresh, onAddToVocabulary, isWordInVocabulary = false, className }) => {
+const OpenAIWordPop: React.FC<OpenAIWordPopProps> = ({ data, isLoading = false, isStreaming = false, onRefresh, onAddToVocabulary, onToggleVocabulary, isWordInVocabulary = false, className }) => {
     const hasDefinitions = !!data && Array.isArray(data.definitions) && data.definitions.length > 0;
     const hasContent = !!data && (Boolean(data.word) || hasDefinitions);
 
@@ -182,17 +184,17 @@ const OpenAIWordPop: React.FC<OpenAIWordPopProps> = ({ data, isLoading = false, 
     return (
         <div className={cn('w-80 h-96 bg-gray-100 text-gray-900 shadow-inner shadow-gray-100 drop-shadow-2xl rounded-2xl overflow-hidden text-left relative', className)}>
             <div className="absolute top-2 right-2 flex items-center gap-1 z-10">
-                {onAddToVocabulary && (
+                {onToggleVocabulary && (
                     <button
-                        onClick={() => data?.word && onAddToVocabulary(data.word, translateText)}
-                        disabled={isWordInVocabulary || !data?.word}
+                        onClick={() => data?.word && onToggleVocabulary(data.word, translateText)}
+                        disabled={!data?.word}
                         className={cn(
                             'p-1.5 rounded-full bg-white/80 shadow-sm transition-colors',
                             isWordInVocabulary
-                                ? 'text-yellow-500 cursor-default'
+                                ? 'text-yellow-500 hover:text-yellow-600 hover:bg-yellow-100 cursor-pointer'
                                 : 'text-gray-600 hover:text-yellow-600 hover:bg-white',
                         )}
-                        title={isWordInVocabulary ? '已收藏' : '收藏到生词本'}
+                        title={isWordInVocabulary ? '已收藏，点击取消收藏' : '收藏到生词本'}
                     >
                         <Star size={16} className={isWordInVocabulary ? 'fill-yellow-400' : ''} />
                     </button>

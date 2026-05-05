@@ -60,7 +60,7 @@ const About = () => {
                     <FaGithub
                         onClick={async () => {
                             await api.call('system/open-url',
-                                'https://github.com/solidSpoon/DashPlayer'
+                                'https://github.com/huwanidea/DashPlayer'
                             );
                         }}
                         className="fill-neutral-500 w-5 h-5 cursor-pointer"

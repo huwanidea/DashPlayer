@@ -352,7 +352,11 @@ export default class TranslateServiceImpl implements TranslateService {
         }
 
         const allSentences = srtData.sentences;
-        let sentencesToTranslate = indices.map(index => allSentences[index]).filter(s => s && s.text.trim() !== '');
+        // 校验 index 边界，防止越界访问
+        let sentencesToTranslate = indices
+            .filter(index => index >= 0 && index < allSentences.length)
+            .map(index => allSentences[index])
+            .filter(s => s && s.text.trim() !== '');
 
         if (useCache) {
             const keysToLookup = sentencesToTranslate.map(s => s.translationKey);

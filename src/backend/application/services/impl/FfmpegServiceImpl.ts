@@ -54,6 +54,7 @@ export default class FfmpegServiceImpl implements FfmpegService {
 
     /**
      * 按时间点分割视频。
+     * @param precise 为 true 时使用 re-encode 模式，避免关键帧对齐偏差。
      */
     @WithSemaphore('ffmpeg')
     public async splitVideoByTimes({
@@ -61,11 +62,13 @@ export default class FfmpegServiceImpl implements FfmpegService {
                                        times,
                                        outputFolder,
                                        outputFilePrefix,
+                                       precise = false,
                                    }: {
         inputFile: string,
         times: number[],
         outputFolder: string,
         outputFilePrefix: string,
+        precise?: boolean
     }): Promise<string[]> {
         await this.storageDirectoryProvider.ensurePathAccessPermissionIfExists(inputFile);
         await this.storageDirectoryProvider.ensurePathAccessPermissionIfExists(outputFolder);
@@ -75,6 +78,7 @@ export default class FfmpegServiceImpl implements FfmpegService {
             inputFile,
             times,
             outputPattern,
+            precise,
         });
 
         return await this.getOutputFiles(outputFolder, outputFilePrefix);

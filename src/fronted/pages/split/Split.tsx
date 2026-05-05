@@ -3,9 +3,12 @@ import React, { useEffect } from 'react';
 import { Button } from '@/fronted/components/ui/button';
 import { Textarea } from '@/fronted/components/ui/textarea';
 import { Label } from '@/fronted/components/ui/label';
-import { FileQuestion, FileType2, FileVideo2, Stethoscope, X } from 'lucide-react';
+import { FileQuestion, FileType2, FileVideo2, Stethoscope, X, AlertTriangle, Zap } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/fronted/components/ui/tooltip';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/fronted/components/ui/tabs';
+import { Alert, AlertDescription, AlertTitle } from '@/fronted/components/ui/alert';
+import { Progress } from '@/fronted/components/ui/progress';
+import { Switch } from '@/fronted/components/ui/switch';
 import SplitFile from '@/fronted/pages/split/SplitFile';
 import SplitPreview from '@/fronted/pages/split/split-preview';
 import useSplit from '@/fronted/hooks/useSplit';
@@ -41,7 +44,12 @@ const Split = () => {
         updateFile,
         inputable,
         aiFormat,
-        runSplitAll
+        runSplitAll,
+        cancelSplit,
+        splitStatus,
+        splitProgress,
+        preciseMode,
+        setPreciseMode
     } = useSplit(useShallow(s => ({
         userInput: s.userInput,
         setUseInput: s.setUseInput,
@@ -50,8 +58,13 @@ const Split = () => {
         deleteFile: s.deleteFile,
         updateFile: s.updateFile,
         aiFormat: s.aiFormat,
+        runSplitAll: s.runSplitAll,
+        cancelSplit: s.cancelSplit,
         inputable: s.inputable,
-        runSplitAll: s.runSplitAll
+        splitStatus: s.splitStatus,
+        splitProgress: s.splitProgress,
+        preciseMode: s.preciseMode,
+        setPreciseMode: s.setPreciseMode
     })));
     const { data: video } = useSWR(videoPath ? ['system/select-file', videoPath] : null, ([_key, path]) => api.call('system/path-info', path));
     const { data: srt } = useSWR(srtPath ? ['system/select-file', srtPath] : null, ([_key, path]) => api.call('system/path-info', path));
@@ -63,7 +76,7 @@ const Split = () => {
     useEffect(() => {
         useSplit.setState({ inputable: true });
     }, []);
-    const [spliting, setSpliting] = React.useState(false);
+    const isSplitting = splitStatus === 'splitting';
 
     return (
         <div className="w-full h-full flex flex-col overflow-hidden select-none bg-background text-foreground">
@@ -73,6 +86,14 @@ const Split = () => {
                     description={t('sentenceSplitter.description')}
                 />
             </div>
+
+            <Alert className="m-4 border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800" variant="default">
+                <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                <AlertTitle className="text-amber-800 dark:text-amber-200 text-sm font-medium">{t('sentenceSplitter.warning.title')}</AlertTitle>
+                <AlertDescription className="text-amber-700 dark:text-amber-300 text-xs">
+                    {t('sentenceSplitter.warning.description')}
+                </AlertDescription>
+            </Alert>
 
             <div className={cn(
                 'flex-1 min-h-0 grid gap-6 px-6 py-5 overflow-hidden',
@@ -183,26 +204,58 @@ const Split = () => {
                         </TabsContent>
                     </Tabs>
 
-                    <div className="flex gap-2 justify-end shrink-0">
-                        <Button variant="secondary" onClick={onSelect}>
-                            {t('sentenceSplitter.selectFile')}
-                        </Button>
-                        <Button
-                            disabled={spliting}
-                            onClick={async () => {
-                                setSpliting(true);
-                                try {
-                                    await toast.promise(runSplitAll(), {
-                                        loading: t('sentenceSplitter.splitting'),
-                                        success: t('sentenceSplitter.splitSuccess'),
-                                        error: (v: unknown) => v instanceof Error ? v.message : t('sentenceSplitter.splitFailed')
-                                    });
-                                } finally {
-                                    setSpliting(false);
-                                }
-                            }}
-                        >{t('sentenceSplitter.splitAll')}</Button>
+                    <div className="flex items-center justify-between shrink-0">
+                        <div className="flex items-center gap-2">
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <div className="flex items-center gap-2">
+                                            <Switch
+                                                id="precise-mode"
+                                                checked={preciseMode}
+                                                onCheckedChange={setPreciseMode}
+                                                disabled={isSplitting}
+                                            />
+                                            <Zap className="w-4 h-4 text-amber-500" />
+                                            <Label htmlFor="precise-mode" className="text-xs cursor-pointer">
+                                                {t('sentenceSplitter.preciseMode')}
+                                            </Label>
+                                        </div>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p className="max-w-xs">{t('sentenceSplitter.preciseModeTooltip')}</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        </div>
+                        <div className="flex gap-2">
+                            <Button variant="secondary" onClick={onSelect}>
+                                {t('sentenceSplitter.selectFile')}
+                            </Button>
+                            {isSplitting && (
+                                <Button variant="outline" onClick={cancelSplit}>
+                                    {t('sentenceSplitter.cancel')}
+                                </Button>
+                            )}
+                            <Button
+                                disabled={isSplitting}
+                                onClick={async () => {
+                                    try {
+                                        await toast.promise(runSplitAll(), {
+                                            loading: t('sentenceSplitter.splitting'),
+                                            success: t('sentenceSplitter.splitSuccess'),
+                                            error: (v: unknown) => v instanceof Error ? v.message : t('sentenceSplitter.splitFailed')
+                                        });
+                                    } catch {
+                                        // handled by toast
+                                    }
+                                }}
+                            >{isSplitting ? `${t('sentenceSplitter.splitting')} ${splitProgress}%` : t('sentenceSplitter.splitAll')}</Button>
+                        </div>
                     </div>
+                    {isSplitting && (
+                        <Progress value={splitProgress} className="h-1.5" />
+                    )}
                 </div>
             </div>
         </div>

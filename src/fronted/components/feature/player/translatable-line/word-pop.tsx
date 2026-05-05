@@ -33,6 +33,8 @@ export interface WordSubParam {
     onRefresh?: () => void;
     /** 收藏按钮点击回调，参数为 (单词, 释义) */
     onAddToVocabulary?: (word: string, translate?: string) => void;
+    /** 切换收藏按钮点击回调，参数为 (单词, 释义)；点击时自动判断是收藏还是取消收藏 */
+    onToggleVocabulary?: (word: string, translate?: string) => void;
     /** 当前单词是否已在生词本中 */
     isWordInVocabulary?: boolean;
     classNames?: {
@@ -53,6 +55,7 @@ const WordPop = React.forwardRef(
             isStreaming = false,
             onRefresh,
             onAddToVocabulary,
+            onToggleVocabulary,
             isWordInVocabulary,
             classNames
         }: WordSubParam,
@@ -63,10 +66,11 @@ const WordPop = React.forwardRef(
         const theme = useTransLineTheme();
         const setting = useSetting((state) => state.setting);
         const dictionaryEngineRaw = setting('providers.dictionary');
+        // 不允许默认值兜底，必须显式配置
         const dictionaryEngine =
             dictionaryEngineRaw === 'youdao' || dictionaryEngineRaw === 'openai'
                 ? dictionaryEngineRaw
-                : 'openai';
+                : null;
         const openaiDictionaryEnabled = dictionaryEngine === 'openai';
         const { refs, floatingStyles } = useFloating({
             middleware: [
@@ -125,17 +129,16 @@ const WordPop = React.forwardRef(
                         {ydData?.translation?.join('；')}
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
-                        {onAddToVocabulary && word && (
+                        {onToggleVocabulary && word && (
                             <button
-                                onClick={(e) => { e.stopPropagation(); onAddToVocabulary(word, ydData?.translation?.join('；')); }}
-                                disabled={isWordInVocabulary}
+                                onClick={(e) => { e.stopPropagation(); onToggleVocabulary(word, ydData?.translation?.join('；')); }}
                                 className={cn(
                                     'p-1.5 rounded-full shadow-sm transition-colors',
                                     isWordInVocabulary
-                                        ? 'text-yellow-500 cursor-default bg-gray-50'
+                                        ? 'text-yellow-500 hover:text-yellow-600 bg-yellow-50 hover:bg-yellow-100 cursor-pointer'
                                         : 'text-gray-600 hover:text-yellow-600 bg-white hover:bg-gray-50 border border-gray-100',
                                 )}
-                                title={isWordInVocabulary ? '已收藏' : '收藏到生词本'}
+                                title={isWordInVocabulary ? '已收藏，点击取消收藏' : '收藏到生词本'}
                             >
                                 <Star size={16} className={isWordInVocabulary ? 'fill-yellow-400' : ''} />
                             </button>
@@ -189,6 +192,7 @@ const WordPop = React.forwardRef(
                         isStreaming={isStreaming}
                         onRefresh={onRefresh}
                         onAddToVocabulary={onAddToVocabulary}
+                        onToggleVocabulary={onToggleVocabulary}
                         isWordInVocabulary={isWordInVocabulary}
                     />
                 );

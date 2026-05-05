@@ -144,13 +144,31 @@ export default class FavouriteClipsServiceImpl implements FavouriteClipsService 
         }
         const [trimStart, trimEnd] = this.mapTrimRange(srt, task.indexInSrt);
         await this.ffmpegService.trimVideo(task.videoPath, trimStart, trimEnd, tempName);
-        await this.clipOssService.putClip(key, tempName, metaData);
-        const meta = await this.clipOssService.get(key);
-        if (!meta) {
-            throw new Error('meta not found');
+        try {
+            await this.clipOssService.putClip(key, tempName, metaData);
+            const meta = await this.clipOssService.get(key);
+            if (!meta) {
+                throw new Error('上传后无法获取元数据');
+            }
+            await this.addToDb(meta);
+        } catch (error) {
+            // 数据一致性：失败时尝试回滚 OSS 上的数据
+            this.logger.error('[FavouriteClips] 添加片段失败，尝试回滚 OSS 数据', { error, key });
+            try {
+                await this.clipOssService.delete(key);
+                this.logger.info('[FavouriteClips] OSS 回滚成功', { key });
+            } catch (rollbackError) {
+                this.logger.error('[FavouriteClips] OSS 回滚失败，需要人工介入', { key, rollbackError });
+            }
+            throw error;
+        } finally {
+            // 清理本地临时文件（不影响数据一致性）
+            try {
+                fs.rmSync(tempName);
+            } catch {
+                this.logger.warn('[FavouriteClips] 清理临时文件失败', { tempName });
+            }
         }
-        await this.addToDb(meta);
-        fs.rmSync(tempName);
     }
 
     public async taskCancelOperation(task: ClipTask): Promise<void> {
@@ -206,8 +224,20 @@ export default class FavouriteClipsServiceImpl implements FavouriteClipsService 
     }
 
     public async deleteFavoriteClip(key: string): Promise<void> {
-        await this.favouriteClipsRepository.deleteClipAndPruneTags(key);
-        await this.clipOssService.delete(key);
+        // 数据一致性：先删 OSS，再删 DB（顺序与添加相反）
+        // 如果 DB 删除失败，OSS 数据已经丢失，但用户可以重新添加
+        // 如果 OSS 删除失败，DB 还保留数据，用户可以再次尝试删除
+        try {
+            await this.clipOssService.delete(key);
+        } catch (error) {
+            this.logger.warn('[FavouriteClips] OSS 删除失败，继续删除 DB 记录', { key, error });
+        }
+        try {
+            await this.favouriteClipsRepository.deleteClipAndPruneTags(key);
+        } catch (error) {
+            this.logger.error('[FavouriteClips] DB 删除失败', { key, error });
+            throw error;
+        }
     }
 
     async exists(srtKey: string, linesInSrt: number[]): Promise<Map<number, boolean>> {

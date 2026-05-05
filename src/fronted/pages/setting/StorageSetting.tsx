@@ -132,9 +132,7 @@ const StorageSetting = () => {
                 title={t('storage.title')}
                 description={
                     <span>
-                        {t('storage.descriptionLine1')}
-                        <br />
-                        {t('storage.descriptionLine2')}
+                        {t('storage.descriptionFull')}
                     </span>
                 }
                 contentClassName="space-y-6"
@@ -163,6 +161,27 @@ const StorageSetting = () => {
                     <span>{size}</span>
                 </div>
 
+                {/* 外部存储内容说明 */}
+                <div className="rounded-lg border border-border/60 p-4 bg-muted/20 space-y-2">
+                    <p className="text-sm font-medium text-foreground">{t('storage.libraryPathDescription')}</p>
+                    <ul className="text-xs text-muted-foreground space-y-1 list-disc list-inside">
+                        <li>{t('storage.libraryContents.videos')}</li>
+                        <li>{t('storage.libraryContents.favoriteClips')}</li>
+                        <li>{t('storage.libraryContents.wordVideo')}</li>
+                        <li>{t('storage.libraryContents.models')}</li>
+                        <li>{t('storage.libraryContents.temp')}</li>
+                        <li>{t('storage.libraryContents.tempOss')}</li>
+                    </ul>
+                    <div className="border-t border-border/40 pt-2 space-y-1">
+                        <p className="text-sm font-medium text-foreground">{t('storage.internalStorageTitle')}</p>
+                        <p className="text-xs text-muted-foreground">{t('storage.internalStorageDescription')}</p>
+                        <ul className="text-xs text-muted-foreground space-y-1 list-disc list-inside">
+                            <li>{t('storage.internalContents.database')}</li>
+                            <li>{t('storage.internalContents.logs')}</li>
+                        </ul>
+                    </div>
+                </div>
+
                 <div className="flex gap-2 items-start">
                     <Controller
                         name="path"
@@ -177,7 +196,7 @@ const StorageSetting = () => {
                                 onBlur={field.onBlur}
                                 title={t('storage.libraryPathTitle')}
                                 value={field.value ?? ''}
-                                description={t('storage.libraryPathDescription')}
+                                description={t('storage.descriptionFull')}
                             />
                         )}
                     />

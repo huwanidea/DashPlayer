@@ -162,6 +162,7 @@ interface SettingsDef {
     'settings/service-credentials/test-openai': { params: void, return: { success: boolean, message: string } };
     'settings/service-credentials/test-tencent': { params: void, return: { success: boolean, message: string } };
     'settings/service-credentials/test-youdao': { params: void, return: { success: boolean, message: string } };
+    'settings/service-credentials/test-whisper': { params: void, return: { success: boolean, message: string } };
     'settings/engine-selection/detail': { params: void, return: EngineSelectionSettingVO };
     'settings/engine-selection/save': { params: EngineSelectionSettingVO, return: void };
     'settings/shortcuts/detail': { params: void, return: ShortcutSettingDetailVO };
@@ -177,9 +178,9 @@ interface WhisperModelDef {
 }
 
 interface SplitVideoDef {
-    'split-video/preview': { params: string, return: ChapterParseResult[] };
+    'split-video/preview': { params: { topic: string; videoDuration?: number }, return: ChapterParseResult[] };
     'split-video/split': {
-        params: { videoPath: string, srtPath: string | null, chapters: ChapterParseResult[] },
+        params: { videoPath: string, srtPath: string | null, chapters: ChapterParseResult[], precise?: boolean },
         return: string
     };
     'split-video/thumbnail': {

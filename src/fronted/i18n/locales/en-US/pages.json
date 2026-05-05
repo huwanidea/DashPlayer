@@ -58,6 +58,9 @@
         "splitting": "Splitting...",
         "splitSuccess": "Split Finished",
         "splitFailed": "Split Failed",
+        "cancel": "Cancel",
+        "preciseMode": "Precise Mode",
+        "preciseModeTooltip": "Use re-encode instead of fast copy to avoid keyframe alignment errors. Slower but more accurate, with better subtitle timing.",
         "tabs": {
             "preview": "Preview",
             "quickSelect": "Quick Select"
@@ -68,6 +71,10 @@
             "title": "Title",
             "empty": "No configuration yet — enter timestamps on the left",
             "shortDuration": "Interval less than 1 minute"
+        },
+        "warning": {
+            "title": "Keyframe Alignment Note",
+            "description": "Video splitting uses fast copy mode (-c copy), so cuts snap to the nearest keyframe. Actual duration may differ by 1-5 seconds from set times. For precise cuts, mark start/end manually in the player and export."
         }
     },
     "subtitleWorkspace": {

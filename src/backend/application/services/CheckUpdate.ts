@@ -6,7 +6,7 @@ import { UpdateCheckResult } from '@/common/types/update-check';
 import { app } from 'electron';
 
 const UPDATE_CACHE_TTL_MS = 5 * 60 * 1000;
-const RELEASES_BASE_URL = 'https://api.github.com/repos/solidSpoon/DashPlayer/releases';
+const RELEASES_BASE_URL = 'https://api.github.com/repos/huwanidea/DashPlayer/releases';
 
 let cache: UpdateCheckResult = { status: 'ok', releases: [] };
 let cacheUpdateTime = 0;

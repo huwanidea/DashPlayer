@@ -97,11 +97,26 @@
         "title": "存储",
         "descriptionLine1": "DashPlayer 会缓存翻译结果，以降低 API 调用成本。",
         "descriptionLine2": "缓存文件由数据库软件维护，请不要编辑缓存文件。",
+        "descriptionFull": "存储分为两部分：外部存储（Library Path）存放视频、收藏片段、词汇片段与模型文件；内部存储（应用数据目录）存放数据库、API 密钥等敏感信息。切换存储路径后请完全退出 DashPlayer 并重新打开。",
         "resetDatabase": "重置数据库",
         "openLibraryFolder": "打开 Library 文件夹",
         "occupiedSpace": "占用空间",
         "libraryPathTitle": "存储路径（Library Path）",
-        "libraryPathDescription": "切换存储路径后请完全退出 DashPlayer 并重新打开。",
+        "libraryPathDescription": "外部存储根目录，包含以下内容：",
+        "libraryContents": {
+            "videos": "视频文件库（videos）",
+            "favoriteClips": "收藏时刻（favourite_clips/default）",
+            "wordVideo": "词汇工坊片段（favourite_clips/word_video）",
+            "models": "Whisper / VAD 本地模型（models）",
+            "temp": "临时文件（temp，处理后自动清理）",
+            "tempOss": "OSS 同步临时文件（temp_oss）"
+        },
+        "internalStorageTitle": "内部存储（应用数据目录）",
+        "internalStorageDescription": "应用内部数据，无需用户管理：",
+        "internalContents": {
+            "database": "数据库（data/），包含收藏单词、翻译缓存、播放历史等",
+            "logs": "日志文件（logs/）"
+        },
         "switchCollection": "收藏时刻文件夹",
         "saveSettingsFailed": "保存设置失败，请稍后重试：{{message}}",
         "syncWordClipsFailed": "同步单词管理片段失败，请稍后再试。",

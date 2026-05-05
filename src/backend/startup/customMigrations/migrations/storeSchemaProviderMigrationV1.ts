@@ -117,6 +117,16 @@ const getLegacySubtitleCustomStyle = async (): Promise<string | null> => {
 export const storeSchemaProviderMigrationV1 = {
     id: MIGRATION_ID,
     description: 'Migrate legacy store schema provider keys to new provider/features/models keys',
+    /**
+     * 执行迁移。
+     *
+     * 迁移逻辑说明：
+     * - 全新安装（所有旧 key 均不存在）：所有 getPersistedString 返回 null，
+     *   normalize* 函数返回默认值（如 'none'），storeSetIfPresent 不写入任何值，
+     *   用户将使用代码中的默认值配置。
+     * - 升级安装：从旧 key 读取用户配置并迁移到新 key。
+     * - 全新安装覆盖旧数据：所有旧配置丢失，用户配置重置为默认值。
+     */
     run: async (): Promise<void> => {
         const persistedSubtitleProvider = getPersistedString('providers.subtitleTranslation');
         const persistedLegacySubtitleProvider = getPersistedString('subtitleTranslation.engine');
@@ -134,10 +144,12 @@ export const storeSchemaProviderMigrationV1 = {
 
         const persistedTranscriptionProvider = getPersistedString('providers.transcription');
         const persistedLegacyTranscriptionProvider = getPersistedString('transcription.engine');
-        const transcriptionEngine = normalizeTranscriptionEngine(
-            persistedTranscriptionProvider
-            ?? (persistedLegacyTranscriptionProvider === null ? null : persistedLegacyTranscriptionProvider)
-        );
+        // 如果新 key 为默认值 'whisper'，则认为用户未显式设置，优先采用旧 key 的值
+        const rawTranscription =
+            persistedTranscriptionProvider === 'whisper'
+                ? (persistedLegacyTranscriptionProvider ?? persistedTranscriptionProvider)
+                : (persistedTranscriptionProvider ?? persistedLegacyTranscriptionProvider);
+        const transcriptionEngine = normalizeTranscriptionEngine(rawTranscription);
 
         const persistedSentenceLearningEnabled = getPersistedString('features.openai.enableSentenceLearning')
             ?? getPersistedString('services.openai.enableSentenceLearning');

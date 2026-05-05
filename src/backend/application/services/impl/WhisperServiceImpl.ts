@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { DpTaskState } from '@/backend/infrastructure/db/tables/dpTask';
 import hash from 'object-hash';
-import { inject, injectable } from 'inversify';
+import { inject, injectable, postConstruct } from 'inversify';
 import DpTaskService from '../DpTaskService';
 import TYPES from '@/backend/ioc/types';
 import FfmpegService from '@/backend/application/services/FfmpegService';
@@ -19,7 +19,7 @@ import StorageDirectoryProvider, {
     StorageDirectoryTarget,
 } from '@/backend/application/ports/gateways/storage/StorageDirectoryProvider';
 
-// 设置过期时间阈值，单位毫秒（此处示例为 3 小时）
+// 设置过期时间阈值，单位毫秒（3 小时）
 const EXPIRATION_THRESHOLD = 3 * 60 * 60 * 1000;
 
 @injectable()
@@ -41,8 +41,16 @@ class WhisperServiceImpl implements WhisperService {
     private readonly logger = getMainLogger('WhisperServiceImpl');
 
     private static readonly INFO_FILE = 'info.json';
+    /** 标记是否已执行过启动清理 */
+    private startupCleanupDone = false;
 
     public async transcript(taskId: number, filePath: string) {
+        // 启动时清理一次过期的临时目录
+        if (!this.startupCleanupDone) {
+            this.startupCleanupDone = true;
+            void this.cleanExpiredFolders();
+        }
+
         this.dpTaskService.process(taskId, { progress: '正在转换音频' });
         try {
             await this.storageDirectoryProvider.ensurePathAccessPermissionIfExists(filePath);

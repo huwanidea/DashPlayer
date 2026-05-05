@@ -97,11 +97,26 @@
         "title": "Storage",
         "descriptionLine1": "DashPlayer caches translation results to reduce API usage costs.",
         "descriptionLine2": "Cache files are managed by the database layer. Please do not edit them manually.",
+        "descriptionFull": "Storage is divided into two parts: External storage (Library Path) holds videos, saved clips, vocabulary clips, and model files; Internal storage (App Data Directory) holds the database, API keys, and other sensitive information. After changing storage path, fully quit DashPlayer and relaunch it.",
         "resetDatabase": "Reset database",
         "openLibraryFolder": "Open Library folder",
         "occupiedSpace": "Storage used",
         "libraryPathTitle": "Storage path (Library Path)",
-        "libraryPathDescription": "After changing storage path, fully quit DashPlayer and relaunch it.",
+        "libraryPathDescription": "External storage root directory, containing:",
+        "libraryContents": {
+            "videos": "Video library (videos)",
+            "favoriteClips": "Saved Moments (favourite_clips/default)",
+            "wordVideo": "Vocabulary Studio clips (favourite_clips/word_video)",
+            "models": "Whisper / VAD local models (models)",
+            "temp": "Temporary files (temp, auto-cleared after processing)",
+            "tempOss": "OSS sync temp files (temp_oss)"
+        },
+        "internalStorageTitle": "Internal storage (App Data Directory)",
+        "internalStorageDescription": "App-internal data, managed automatically:",
+        "internalContents": {
+            "database": "Database (data/), including vocabulary, translation cache, watch history, etc.",
+            "logs": "Log files (logs/)"
+        },
         "switchCollection": "Saved Moments folder",
         "saveSettingsFailed": "Failed to save settings. Please try again later: {{message}}",
         "syncWordClipsFailed": "Failed to sync word-learning clips. Please try again later.",

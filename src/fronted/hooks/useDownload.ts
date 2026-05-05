@@ -45,6 +45,15 @@ const useDownload = create(
                 return metadata;
             },
             startDownload: async (url, savePath, metadata) => {
+                // 检查是否已有相同 URL 的下载任务
+                const existingTasks = Array.from(get().tasks.values());
+                const existingTask = existingTasks.find(
+                    t => t.url === url && (t.status === 'downloading' || t.status === 'pending')
+                );
+                if (existingTask) {
+                    throw new Error('该 URL 已在下载队列中');
+                }
+
                 const taskId = await useDpTaskCenter.getState().register(
                     () => api.call('download/start', { url, savePath }),
                     {

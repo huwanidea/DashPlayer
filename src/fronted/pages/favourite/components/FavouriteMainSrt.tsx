@@ -24,7 +24,7 @@ const FavouriteMainSrt = () => {
       <TranslatableLine
         sentence={currentSentence}
         show={true}
-        className="flex justify-center text-2xl text-center"
+        className="flex flex-wrap justify-center text-2xl text-center"
         wordClassNames={{
           hover: 'hover:bg-blue-100 dark:hover:bg-blue-900/30',
           vocab: '!text-purple-500 !underline !decoration-purple-500 !decoration-1 !bg-purple-500/10 px-0.5 rounded hover:!bg-purple-500/30'

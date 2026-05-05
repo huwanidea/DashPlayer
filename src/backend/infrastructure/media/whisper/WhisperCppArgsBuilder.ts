@@ -32,18 +32,6 @@ export class WhisperCppArgsBuilder {
 
         let vadModelPath: string | null = null;
         let vadSkippedBecauseUnsupported = false;
-        if (enableVad) {
-            if (!supportsVadFlag) {
-                vadSkippedBecauseUnsupported = true;
-            } else if (supportsVadModelFlag) {
-                vadModelPath = path.join(modelsRoot, 'whisper-vad', `ggml-${vadModel}.bin`);
-                if (!fs.existsSync(vadModelPath)) {
-                    // 如果 VAD 模型不存在，记录日志并回退到普通模式，而不是抛出异常
-                    vadModelPath = null;
-                    vadSkippedBecauseUnsupported = true;
-                }
-            }
-        }
 
         const outPrefix = path.join(tempFolder, 'whispercpp_out');
         const outSrt = `${outPrefix}.srt`;
@@ -58,9 +46,16 @@ export class WhisperCppArgsBuilder {
         ];
 
         if (enableVad && supportsVadFlag) {
-            args.push('--vad');
-            if (vadModelPath && supportsVadModelFlag) {
-                args.push('-vm', vadModelPath);
+            if (supportsVadModelFlag) {
+                vadModelPath = path.join(modelsRoot, 'whisper-vad', `ggml-${vadModel}.bin`);
+                if (!fs.existsSync(vadModelPath)) {
+                    vadModelPath = null;
+                }
+            }
+            if (vadModelPath) {
+                args.push('--vad', '-vm', vadModelPath);
+            } else {
+                vadSkippedBecauseUnsupported = true;
             }
         }
 

@@ -54,6 +54,7 @@ const ServiceCredentialSetting = () => {
     const [testingOpenAi, setTestingOpenAi] = React.useState(false);
     const [testingTencent, setTestingTencent] = React.useState(false);
     const [testingYoudao, setTestingYoudao] = React.useState(false);
+    const [testingWhisper, setTestingWhisper] = React.useState(false);
     const [testResults, setTestResults] = React.useState<Record<string, { success: boolean; message: string } | null>>({});
     const [whisperModelStatus, setWhisperModelStatus] = React.useState<WhisperModelStatusVO | null>(null);
     const [downloadingWhisperModel, setDownloadingWhisperModel] = React.useState(false);
@@ -113,11 +114,12 @@ const ServiceCredentialSetting = () => {
     /**
      * 测试指定服务商连通性。
      */
-    const testProvider = async (provider: 'openai' | 'tencent' | 'youdao') => {
+    const testProvider = async (provider: 'openai' | 'tencent' | 'youdao' | 'whisper') => {
         const setTesting = {
             openai: setTestingOpenAi,
             tencent: setTestingTencent,
             youdao: setTestingYoudao,
+            whisper: setTestingWhisper,
         }[provider];
 
         setTesting(true);
@@ -140,6 +142,7 @@ const ServiceCredentialSetting = () => {
                 openai: 'settings/service-credentials/test-openai',
                 tencent: 'settings/service-credentials/test-tencent',
                 youdao: 'settings/service-credentials/test-youdao',
+                whisper: 'settings/service-credentials/test-whisper',
             } as const;
             const result = await api.call(routeMap[provider]);
             setTestResults((prev) => ({ ...prev, [provider]: result }));
@@ -433,9 +436,23 @@ const ServiceCredentialSetting = () => {
                 </div>
 
                 <div className="rounded-xl border border-border/70 p-5 space-y-4">
-                    <div>
-                        <div className="flex items-center gap-2 text-sm font-semibold"><Cpu className="w-4 h-4" />{t('serviceCredentials.whisper.title')}</div>
-                        <div className="text-xs text-muted-foreground mt-1">{t('serviceCredentials.whisper.description')}</div>
+                    <div className="flex items-center justify-between gap-3">
+                        <div>
+                            <div className="flex items-center gap-2 text-sm font-semibold"><Cpu className="w-4 h-4" />{t('serviceCredentials.whisper.title')}</div>
+                            <div className="text-xs text-muted-foreground mt-1">{t('serviceCredentials.whisper.description')}</div>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                            {testResults.whisper && (
+                                <span className={`flex items-center gap-1 text-xs ${testResults.whisper.success ? 'text-green-600' : 'text-destructive'}`}>
+                                    {testResults.whisper.success ? <CheckCircle2 className="w-3.5 h-3.5" /> : <XCircle className="w-3.5 h-3.5" />}
+                                    {testResults.whisper.success ? t('common.testSuccess') : testResults.whisper.message}
+                                </span>
+                            )}
+                            <Button type="button" variant="outline" size="sm" onClick={() => testProvider('whisper').catch(() => null)} disabled={testingWhisper || autoSaveStatus === 'saving'}>
+                                <TestTube className="w-4 h-4 mr-2" />
+                                {testingWhisper ? t('common.testing') : t('common.testConnection')}
+                            </Button>
+                        </div>
                     </div>
 
                     <div className="space-y-2">

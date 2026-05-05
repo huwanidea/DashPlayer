@@ -1,6 +1,7 @@
 import registerRoute from '@/backend/adapters/ipc/registerRoute';
 import { app, dialog, shell } from 'electron';
 import path from 'path';
+import fsSync from 'fs';
 import { clearDB } from '@/backend/infrastructure/db/db';
 import { WindowState } from '@/common/types/Types';
 import { checkUpdate } from '@/backend/application/services/CheckUpdate';
@@ -17,6 +18,8 @@ import { RESET_DB_RESYNC_FLAG } from '@/common/constants/resetDb';
 import StorageDirectoryProvider, {
     StorageDirectoryTarget,
 } from '@/backend/application/ports/gateways/storage/StorageDirectoryProvider';
+import { SettingsStore } from '@/backend/application/ports/gateways/SettingsStore';
+import { getMainLogger } from '@/backend/infrastructure/logger';
 
 /**
  * eg: .mkv -> mkv
@@ -31,6 +34,7 @@ function processFilter(filter: string[]) {
 @injectable()
 export default class SystemController implements Controller {
     private static readonly UPDATE_TOAST_MIN_INTERVAL_MS = 24 * 60 * 60 * 1000;
+    private logger = getMainLogger('SystemController');
 
     @inject(TYPES.WindowPort)
     private windowPort!: WindowPort;
@@ -38,6 +42,8 @@ export default class SystemController implements Controller {
     private storageDirectoryProvider!: StorageDirectoryProvider;
     @inject(TYPES.SystemConfigService)
     private systemConfigService!: SystemConfigService;
+    @inject(TYPES.SettingsStore)
+    private settingsStore!: SettingsStore;
 
     public async info() {
         const platform = process.platform;
@@ -144,12 +150,24 @@ export default class SystemController implements Controller {
      * 打开当前媒体库根目录。
      *
      * 行为说明：
-     * - 仅当媒体库目录健康可访问时才允许打开；
-     * - 目录异常时直接抛出显式错误，交由前端提示用户重新选择。
+     * - 直接打开用户配置的路径（storage.path），不做后缀处理；
+     * - 若路径为空则使用默认路径；
+     * - 目录不存在时尝试打开其父目录。
      */
     public async openCacheDir() {
-        const libraryRoot = await this.storageDirectoryProvider.provideDirectory(StorageDirectoryTarget.LIBRARY_ROOT);
-        await shell.openPath(libraryRoot);
+        const configuredPath = this.settingsStore.get('storage.path');
+        this.logger.info(`openCacheDir: configuredPath=${configuredPath}`);
+        let targetPath = configuredPath;
+        if (StrUtil.isBlank(targetPath)) {
+            targetPath = path.join(app.getPath('documents'), 'DashPlayer');
+            this.logger.info(`openCacheDir: using default path=${targetPath}`);
+        }
+        // 目录不存在时尝试打开父目录
+        if (!fsSync.existsSync(targetPath)) {
+            this.logger.info(`openCacheDir: path not exists, using parent=${path.dirname(targetPath)}`);
+            targetPath = path.dirname(targetPath);
+        }
+        await shell.openPath(targetPath);
     }
 
     public registerRoutes(): void {

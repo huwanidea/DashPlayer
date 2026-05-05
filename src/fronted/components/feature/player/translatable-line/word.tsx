@@ -87,10 +87,11 @@ const Word = ({word, original, pop, requestPop, show, alwaysDark = false, classN
     const vocabCls = isVocabularyWord ? (classNames?.vocab ?? theme.word.vocabHighlightClass) : undefined;
     const setting = useSetting((state) => state.setting);
     const dictionaryEngineRaw = setting('providers.dictionary');
+    // 不允许默认值兜底，必须显式配置
     const dictionaryEngine =
         dictionaryEngineRaw === 'youdao' || dictionaryEngineRaw === 'openai'
             ? dictionaryEngineRaw
-            : 'openai';
+            : null;
     const openaiDictionaryEnabled = dictionaryEngine === 'openai';
     const dictionaryMode = dictionaryEngine;
 
@@ -175,20 +176,34 @@ const Word = ({word, original, pop, requestPop, show, alwaysDark = false, classN
         }
     };
 
-    /** 将当前单词加入收藏生词本 */
-    const handleAddToVocabulary = async (wordToAdd: string, translate?: string) => {
-        const normalized = wordToAdd.trim().toLowerCase();
+    /** 切换单词的收藏状态（收藏/取消收藏） */
+    const handleToggleVocabulary = async (wordToToggle: string, translate?: string) => {
+        const normalized = wordToToggle.trim().toLowerCase();
+        const isCurrentlyFavorited = vocabularyStore.isVocabularyWord(normalized);
+
         try {
-            const result = await api.call('vocabulary/add', { word: normalized, translate });
-            if (result.success) {
-                vocabularyStore.addVocabularyWords([normalized]);
-                toast({ title: '已收藏', description: `「${normalized}」已加入生词本` });
+            if (isCurrentlyFavorited) {
+                // 取消收藏
+                const result = await api.call('vocabulary/delete', { word: normalized });
+                if (result.success) {
+                    vocabularyStore.removeVocabularyWords([normalized]);
+                    toast({ title: '已取消收藏', description: `「${normalized}」已从生词本移除` });
+                } else {
+                    toast({ title: '取消收藏失败', description: result.message, variant: 'destructive' });
+                }
             } else {
-                toast({ title: '收藏失败', description: result.message, variant: 'destructive' });
+                // 收藏
+                const result = await api.call('vocabulary/add', { word: normalized, translate });
+                if (result.success) {
+                    vocabularyStore.addVocabularyWords([normalized]);
+                    toast({ title: '已收藏', description: `「${normalized}」已加入生词本` });
+                } else {
+                    toast({ title: '收藏失败', description: result.message, variant: 'destructive' });
+                }
             }
         } catch (error) {
-            logger.error('收藏单词失败', { error: error instanceof Error ? error.message : error });
-            toast({ title: '收藏失败', description: error instanceof Error ? error.message : String(error), variant: 'destructive' });
+            logger.error('切换收藏状态失败', { error: error instanceof Error ? error.message : error });
+            toast({ title: '操作失败', description: error instanceof Error ? error.message : String(error), variant: 'destructive' });
         }
     };
     const eleRef = useRef<HTMLSpanElement | null>(null);
@@ -326,7 +341,7 @@ const Word = ({word, original, pop, requestPop, show, alwaysDark = false, classN
                         openaiStreamingData={openaiDictionaryEnabled ? dictionaryEntry?.data : null}
                         isStreaming={openaiDictionaryEnabled && !!dictionaryEntry && !dictionaryEntry.isComplete}
                         onRefresh={handleRefresh}
-                        onAddToVocabulary={handleAddToVocabulary}
+                        onToggleVocabulary={handleToggleVocabulary}
                         isWordInVocabulary={isVocabularyWord}
                     />
                 </Eb>

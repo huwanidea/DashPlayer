@@ -186,9 +186,31 @@ export class DefaultFfmpegCommandBuilder implements FfmpegCommandBuilder {
 
     /**
      * 构建按时间点切段视频命令参数。
+     * @param args.precise 为 true 时使用 re-encode 模式，避免关键帧对齐偏差。
      */
     public buildSplitVideoByTimes(args: SplitVideoByTimesArgs): string[] {
         this.assertAscendingTimes(args.times, '视频时间点分段');
+
+        if (args.precise) {
+            // 精确模式：使用 re-encode（libx264），避免关键帧对齐偏差
+            // 通过 -ss/-t 逐段切割，每段独立编码
+            const segments: string[] = [];
+            const startTimes = [0, ...args.times];
+            const endTimes = [...args.times];
+
+            for (let i = 0; i < startTimes.length; i++) {
+                const duration = endTimes[i] - startTimes[i];
+                segments.push(
+                    '-ss', TimeUtil.secondToTimeStrWithMs(startTimes[i]),
+                    '-t', `${duration}`,
+                    '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '23',
+                    '-c:a', 'aac', '-ar', '44100',
+                    '-map', '0'
+                );
+            }
+            return ['-y', '-i', args.inputFile, ...segments, args.outputPattern];
+        }
+
         return [
             '-y',
             '-i', args.inputFile,

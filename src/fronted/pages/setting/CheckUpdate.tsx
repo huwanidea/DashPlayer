@@ -31,7 +31,7 @@ const CheckUpdate = () => {
                 <Button
                     onClick={async () => {
                         await api.call('system/open-url',
-                            'https://github.com/solidSpoon/DashPlayer/releases/latest'
+                            'https://github.com/huwanidea/DashPlayer/releases/latest'
                         );
                     }}
                 >

@@ -18,12 +18,15 @@ export default interface FfmpegService {
                           inputFile,
                           times,
                           outputFolder,
-                          outputFilePrefix
+                          outputFilePrefix,
+                          precise
                       }: {
         inputFile: string,
         times: number[],
         outputFolder: string,
-        outputFilePrefix: string
+        outputFilePrefix: string,
+        /** 精确模式：使用 re-encode 而非 -c copy，避免关键帧对齐偏差 */
+        precise?: boolean
     }): Promise<string[]>;
 
     duration(filePath: string): Promise<number>;
